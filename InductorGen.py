@@ -30,6 +30,14 @@ import gdspy
 # --disablepreview -> Disable GDS output preview
 # --disablesave -> Disable GDS file saving (seems useless cause of the behavior or -o but is usefull for the GUI)
 
+
+# -lay0 or --layer0 -> ly0 : lowest metal
+# -lay1 or --layer1 -> ly1 : first metal
+# -lay2 or --layer2 -> ly2 : second metal
+# -lay3 or --layer3 -> ly3 : third metal
+
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-l", "--length", type=float,help="Length of the inscribed square ", required=True)
 parser.add_argument("-s", "--sides", type=int, choices=[4,8],help="Number of sides of the geometry (only 4 or 8)", required=True)
@@ -42,7 +50,10 @@ parser.add_argument("-m", "--margin", type=float,help=" Margin between the vias 
 
 parser.add_argument("-g", "--grid", type=float,help="Eneble snap to grid with given lenth (1*10-6 m by default)", required=True)
 
-
+parser.add_argument("-lay0", "--layer0", type=float,help=" Lowest Mrtal", required=True)
+parser.add_argument("-lay1", "--layer1", type=float,help=" first Mrtal", required=True)
+parser.add_argument("-lay2", "--layer2", type=float,help=" Second Mrtal", required=True)
+parser.add_argument("-lay3", "--layer3", type=float,help=" Third Mrtal", required=True)
 
 
 parser.add_argument("--drawgridongds",help="Draw the grid (with lenth given in -g wich is required) IN THE GDS", action="store_true")
@@ -60,6 +71,13 @@ p = args.space
 r = args.tap
 o = args.overlap
 mv = args.margin
+
+
+ly0 = args.layer0
+ly1 = args.layer1
+ly2 = args.layer2
+ly3 = args.layer3
+
 
 
 grid = args.grid
@@ -101,11 +119,11 @@ def write_my_svg(filename,cell):
 # This function prevent gdspy from superimposing the new impetance when we genrerate more than one after running the program
 def reset_gdspy():
     cell.remove_polygons(lambda pts, layer, datatype:
-                     layer == 0)
+                     layer == ly0)
     cell.remove_polygons(lambda pts, layer, datatype:
-                     layer == 1)
+                     layer == ly1)
     cell.remove_polygons(lambda pts, layer, datatype:
-                     layer == 2)
+                     layer == ly2)
 # Setup the gdwrite function
 # This function is just to make thing faster
 def gdwrite(a,l):
@@ -120,7 +138,7 @@ lstx = [] # lstx and lsty will be a temporary variable for each plot or fill of 
 lsty = []#   we use it to make the gdspy's implementation more simple
 class induct:
     
-    def __init__(self, angle, radius, turns, length, sides, d, p, r, o, mv,grid):
+    def __init__(self, angle, radius, turns, length, sides, d, p, r, o, mv,grid,ly0,ly1,ly2,ly3):
         # we initialyse all the parameters
         self.grid = grid
         self.a = angle
@@ -138,8 +156,12 @@ class induct:
         self.o = o
         self.mv = mv
         self.k = abs(self.p/(sqrt(2)/2)) + 1
-        
 
+        self.ly0 = ly0
+        self.ly1 = ly1
+        self.ly2 = ly2
+        self.ly3 = ly3
+        
     def generate(self): # this function draw the natives poligon
         i = 1
         
@@ -197,12 +219,12 @@ class induct:
         while i < len(x):#   
             lstx = x[i][1:self.s//2+1] + [x[i+1][1]] + x[i+1][1:self.s//2+1][::-1] + [x[i+1][1]] 
             lsty = y[i][1:self.s//2+1] + [-y[i][1]] + y[i+1][1:self.s//2+1][::-1] + [y[i][1]] 
-            gdwrite(ar_to_tu(lstx,lsty,self.grid),2)
+            gdwrite(ar_to_tu(lstx,lsty,self.grid),ly2)
             
             
             lstx = x[i][self.s//2+1:self.s + 1] + [-x[i+1][1]]  + x[i+1][self.s//2+1:self.s + 1][::-1] + [-x[i+1][1]] 
             lsty = y[i][self.s//2+1:self.s + 1] + [y[i][1]] + y[i+1][self.s//2+1:self.s + 1][::-1] + [-y[i][1]] 
-            gdwrite(ar_to_tu(lstx,lsty,self.grid),2)
+            gdwrite(ar_to_tu(lstx,lsty,self.grid),ly2)
             
             i += 2
     def draw_input(self,x,y): # this function just draw LINE BY LINE the input of the inductor
@@ -223,7 +245,7 @@ class induct:
         lsty2 = [y[1][4:6][0],y[1][4:6][1]]
         
         
-        gdwrite(fusion(ar_to_tu(lstx,lsty,self.grid) , ar_to_tu(lstx1[::-1],lsty1[::-1],self.grid) + ar_to_tu(lstx2[::-1],lsty2[::-1],self.grid)),2)
+        gdwrite(fusion(ar_to_tu(lstx,lsty,self.grid) , ar_to_tu(lstx1[::-1],lsty1[::-1],self.grid) + ar_to_tu(lstx2[::-1],lsty2[::-1],self.grid)),ly2)
         
         
         lstx = [-self.p-l2,-self.p-l2]+[-self.p,-self.p][::-1]
@@ -239,7 +261,7 @@ class induct:
         lsty2 = [y[1][4:6][0],y[1][4:6][0]]  
         
  
-        gdwrite(fusion(ar_to_tu(lstx,lsty,self.grid) , ar_to_tu(lstx1[::-1],lsty1[::-1],self.grid) + ar_to_tu(lstx2[::-1],lsty2[::-1],self.grid)),2)
+        gdwrite(fusion(ar_to_tu(lstx,lsty,self.grid) , ar_to_tu(lstx1[::-1],lsty1[::-1],self.grid) + ar_to_tu(lstx2[::-1],lsty2[::-1],self.grid)),ly2)
 
     def draw_cross_edge(self,x,y):# this function just calculate and draw how far the middles lines should go before the crossing
         
@@ -270,7 +292,7 @@ class induct:
             lstx1 = [x[i+1][4:6][0] , x[i+1][4:6][0] + (xy1-self.l)/2 - k2]
             lsty1 = [-y[i+1][4:6][0] , -y[i+1][4:6][0]]
             
-            gdwrite(ar_to_tu(lstx + lstx1[::-1],lsty + lsty1[::-1],self.grid),2)
+            gdwrite(ar_to_tu(lstx + lstx1[::-1],lsty + lsty1[::-1],self.grid),ly2)
             
             
             lstx = [-x[i+1][4:6][0] , -x[i+1][4:6][0] - (xy1-self.l)/2 + k1 ]
@@ -279,7 +301,7 @@ class induct:
             lstx1 = [-x[i+1][4:6][0] , -x[i+1][4:6][0] - (xy1-self.l)/2 + k1]
             lsty1 = [-y[i+1][4:6][0] , -y[i+1][4:6][0]]
             
-            gdwrite(ar_to_tu(lstx + lstx1[::-1],lsty + lsty1[::-1],self.grid),2)           
+            gdwrite(ar_to_tu(lstx + lstx1[::-1],lsty + lsty1[::-1],self.grid),ly2)           
             i += 2
             if ab == 1:
                 ab -= 1
@@ -311,7 +333,7 @@ class induct:
             lstx1 = [x[i+1][4:6][0] , x[i][4:6][0] + (xy-self.l)/2 - k2]
             lsty1 = [y[i+1][4:6][0] , y[i+1][4:6][0]]
             
-            gdwrite(ar_to_tu(lstx  + lstx1[::-1] ,lsty + lsty1[::-1],self.grid),2)
+            gdwrite(ar_to_tu(lstx  + lstx1[::-1] ,lsty + lsty1[::-1],self.grid),ly2)
             
             
             
@@ -321,7 +343,7 @@ class induct:
             lstx1 = [-x[i+1][4:6][0] , -x[i][4:6][0] - (xy-self.l)/2 + k1]
             lsty1 = [y[i+1][4:6][0] , y[i+1][4:6][0]]
             
-            gdwrite(ar_to_tu(lstx  + lstx1[::-1] ,lsty + lsty1[::-1],self.grid),2)
+            gdwrite(ar_to_tu(lstx  + lstx1[::-1] ,lsty + lsty1[::-1],self.grid),ly2)
             
             if ab == 1:
                 ab -= 1
@@ -362,7 +384,7 @@ class induct:
                 lstxx = [ptx]
             pty = -(y[i+1][4:6][0])
             
-            gdwrite(ar_to_tu(lstx+lstxx+[ptx]+lstx1[::-1],lsty+lstyy+[pty]+lsty1[::-1],self.grid),2)    
+            gdwrite(ar_to_tu(lstx+lstxx+[ptx]+lstx1[::-1],lsty+lstyy+[pty]+lsty1[::-1],self.grid),ly2)    
 
             i += 4
           
@@ -387,13 +409,13 @@ class induct:
             lstx1 = [ -x[i+1][4:6][0] - (xy1-self.l)/2 , xxxx ] # IMPORTANT
             lsty1 = [-(y[i-1][4:6][0]) , -(y[i+1][4:6][0])]
             
-            gdwrite(ar_to_tu(lstx2[::-1]+lstx+lstx3[::-1]+lstx1[::-1],lsty2[::-1]+lsty+lsty3[::-1]+lsty1[::-1],self.grid),0) # draw corssings
+            gdwrite(ar_to_tu(lstx2[::-1]+lstx+lstx3[::-1]+lstx1[::-1],lsty2[::-1]+lsty+lsty3[::-1]+lsty1[::-1],self.grid),ly0) # draw corssings
 
             lstx = [ -x[i][4:6][0] - (xy-self.l)/2 + self.k, x[i][4:6][0] + (xy-self.l)/2 - self.k//2]
             lstx1 = [ -x[i+1][4:6][0] - (xy1-self.l)/2 ,-x[i][4:6][0] - (xy-self.l)/2]       
                  #draw vias
-            gdwrite(ar_to_tu([lstx2[1]-self.mv,lstx2[0]-self.mv] + [lstx[0]+self.mv]*2 ,[lsty2[1] + self.mv,lsty2[0] - self.mv] + [lsty[0] - self.mv] + [lsty2[1] + self.mv],self.grid),1)
-            gdwrite(ar_to_tu([lstx3[0]+self.mv,lstx3[1]+self.mv] + [lstx[1]-self.mv]*2 ,[lsty3[0]+self.mv, lsty3[1]-self.mv] + [lsty[1] - self.mv] + [lsty3[0] + self.mv],self.grid),1)
+            gdwrite(ar_to_tu([lstx2[1]-self.mv,lstx2[0]-self.mv] + [lstx[0]+self.mv]*2 ,[lsty2[1] + self.mv,lsty2[0] - self.mv] + [lsty[0] - self.mv] + [lsty2[1] + self.mv],self.grid),ly1)
+            gdwrite(ar_to_tu([lstx3[0]+self.mv,lstx3[1]+self.mv] + [lstx[1]-self.mv]*2 ,[lsty3[0]+self.mv, lsty3[1]-self.mv] + [lsty[1] - self.mv] + [lsty3[0] + self.mv],self.grid),ly1)
 
             i += 4  
 
@@ -428,7 +450,7 @@ class induct:
                 lstxx = [ptx]
             pty = (y[i+1][4:6][0])
             
-            gdwrite(ar_to_tu(lstx+lstxx+[ptx]+lstx1[::-1],lsty+lstyy+[pty]+lsty1[::-1],self.grid),2)    
+            gdwrite(ar_to_tu(lstx+lstxx+[ptx]+lstx1[::-1],lsty+lstyy+[pty]+lsty1[::-1],self.grid),ly2)    
 
             i += 4
         i = 4
@@ -453,14 +475,14 @@ class induct:
             lsty1 = [(y[i-1][4:6][0]) , (y[i+1][4:6][0])]
             
             
-            gdwrite(ar_to_tu(lstx2[::-1]+lstx+lstx3[::-1]+lstx1[::-1],lsty2[::-1]+lsty+lsty3[::-1]+lsty1[::-1],self.grid),0)                        
+            gdwrite(ar_to_tu(lstx2[::-1]+lstx+lstx3[::-1]+lstx1[::-1],lsty2[::-1]+lsty+lsty3[::-1]+lsty1[::-1],self.grid),ly0)                        
         
             lstx = [ -x[i][4:6][0] - (xy-self.l)/2 + self.k , x[i][4:6][0] + (xy-self.l)/2 - self.k//2]
             lstx1 = [ -x[i+1][4:6][0] - (xy1-self.l)/2 ,-x[i][4:6][0] - (xy-self.l)/2] 
 
             #draw vias
-            gdwrite(ar_to_tu([lstx2[1]-self.mv,lstx2[0]-self.mv] + [lstx[0]+self.mv]*2 ,[lsty2[1] - self.mv,lsty2[0] + self.mv] + [lsty[0] + self.mv] + [lsty2[1] - self.mv],self.grid),1)
-            gdwrite(ar_to_tu([lstx3[0]+self.mv,lstx3[1]+self.mv] + [lstx[1]-self.mv]*2 ,[lsty3[0] - self.mv, lsty3[1] + self.mv] + [lsty[1] + self.mv] + [lsty3[0] - self.mv],self.grid),1)
+            gdwrite(ar_to_tu([lstx2[1]-self.mv,lstx2[0]-self.mv] + [lstx[0]+self.mv]*2 ,[lsty2[1] - self.mv,lsty2[0] + self.mv] + [lsty[0] + self.mv] + [lsty2[1] - self.mv],self.grid),ly1)
+            gdwrite(ar_to_tu([lstx3[0]+self.mv,lstx3[1]+self.mv] + [lstx[1]-self.mv]*2 ,[lsty3[0] - self.mv, lsty3[1] + self.mv] + [lsty[1] + self.mv] + [lsty3[0] - self.mv],self.grid),ly1)
 
             i += 4   
         
@@ -470,19 +492,19 @@ class induct:
 
         g = 0
         while g < px+2:
-            gdwrite(ar_to_tu([g]*2,[px,-px],self.grid),3)
+            gdwrite(ar_to_tu([g]*2,[px,-px],self.grid),ly3)
             g += self.grid
         g = 0
         while g > -px-2:
-            gdwrite(ar_to_tu([g]*2,[px,-px],self.grid),3)
+            gdwrite(ar_to_tu([g]*2,[px,-px],self.grid),ly3)
             g -= self.grid
         g = 0
         while g < px+2:
-            gdwrite(ar_to_tu([px,-px],[g]*2,self.grid),3)
+            gdwrite(ar_to_tu([px,-px],[g]*2,self.grid),ly3)
             g += self.grid
         g = 0
         while g > -px-2:
-            gdwrite(ar_to_tu([px,-px],[g]*2,self.grid),3)
+            gdwrite(ar_to_tu([px,-px],[g]*2,self.grid),ly3)
             g -= self.grid
     def draw_end(self,x,y): # this function draw the "end" by connecting the 2 last cable
 
@@ -531,7 +553,7 @@ reset_gdspy() # Prevent gdspy from superposing inductors
 a = give_a(s)
 rad = give_rad(d,a) 
     
-inductor = induct(a,rad,t,l,s,d,p,r,o,mv,grid)
+inductor = induct(a,rad,t,l,s,d,p,r,o,mv,grid,ly0,ly1,ly2,ly3)
         
 x,y,y2 = inductor.generate()
 inductor.draw(x,y,y2) 
