@@ -75,11 +75,27 @@ else:
 if args.disablesave:
     save = False
 
+
+
+filename2 = args.output
+if filename2:
+    if not filename2[-4:] == ".gds": # if the correct extention isn't already set, set it
+        filename2 += ".svg"
+
+
+
+
 cell = gdspy.Cell('Inductor', True)
 
 
 def write(filename):
     writer = gdspy.write_gds(filename,cells=[cell], unit=1.0e-6,precision=1.0e-9)
+
+
+def write_my_svg(filename,cell):
+    writer_my_svg = cell.write_svg(filename, scaling=1)
+
+
 
 # Setup the reset_gdspy function
 # This function prevent gdspy from superimposing the new impetance when we genrerate more than one after running the program
@@ -524,6 +540,9 @@ if args.drawgridongds:
     inductor.draw_grid() # if dg than we draw the grid before writing so it apear in the GDS file
 if save:
     write(filename)
+    write_my_svg(filename2,cell)
+    
+
 
 
 inductor.draw_grid()
